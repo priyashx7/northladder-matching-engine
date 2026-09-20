@@ -85,19 +85,20 @@ function showToast(message, type = 'success') {
 
 function buyerCard(b){
   const id = buyerCount++;
-  const catBox = c => `<label class="chk"><input type="checkbox" data-cat="${c}" ${b.cats.includes(c)?'checked':''}> ${c}</label>`;
+  const catBox = c => `<label class="chk"><input type="checkbox" data-cat="${c}" ${(b.cats && b.cats.includes(c))?'checked':''}> ${c}</label>`;
   const seg = b.isNew ? 'Segment ' : '';
   const isSelf = b.mode === 'self';
   const delDisabled = isSelf ? 'disabled' : '';
-  const delVal = isSelf ? 0 : (b.delCost !== undefined ? b.delCost : 0);
+  const val = (v) => (v === undefined || v === null ? '' : v);
+  const delVal = isSelf ? 0 : val(b.delCost);
 
   return `
   <div class="buyer" id="buyer-${id}" data-id="${id}">
     <button class="remove-btn" onclick="removeBuyer(${id})">remove</button>
-    <h3><input type="text" value="${b.name}" data-f="name"></h3>
+    <h3><input type="text" value="${val(b.name)}" data-f="name"></h3>
     <div class="cats">${catBox('Phone')}${catBox('Tablet')}${catBox('Laptop')}</div>
     <div class="row">
-      <div><label>Bid price (₹)</label><input type="number" value="${b.bid}" data-f="bid"></div>
+      <div><label>Bid price (₹)</label><input type="number" value="${val(b.bid)}" data-f="bid" placeholder="e.g. 5000"></div>
       <div><label>Fulfillment mode</label>
         <select data-f="mode" onchange="toggleMode(this)">
           <option value="delivery" ${b.mode==='delivery'?'selected':''}>NorthLadder delivers</option>
@@ -106,18 +107,18 @@ function buyerCard(b){
       </div>
     </div>
     <div class="fulfill-fields">
-      <div class="rto-field" style="${isSelf?'display:none':''}"><label>RTO risk (%)</label><input type="number" value="${b.rto}" data-f="rto" min="0" max="100" data-max100="true"></div>
-      <div class="col-field" style="${!isSelf?'display:none':''}"><label class="lbl-col">${seg}Avg days to collect</label><input type="number" value="${b.avgCol}" data-f="avgCol"></div>
-      <div><label>Delivery cost to buyer (₹)</label><input type="number" value="${delVal}" ${delDisabled} data-f="delCost"></div>
+      <div class="rto-field" style="${isSelf?'display:none':''}"><label>RTO risk (%)</label><input type="number" value="${val(b.rto)}" data-f="rto" min="0" max="100" data-max100="true" placeholder="e.g. 10"></div>
+      <div class="col-field" style="${!isSelf?'display:none':''}"><label class="lbl-col">${seg}Avg days to collect</label><input type="number" value="${val(b.avgCol)}" data-f="avgCol" placeholder="e.g. 2"></div>
+      <div><label>Delivery cost to buyer (₹)</label><input type="number" value="${delVal}" ${delDisabled} data-f="delCost" placeholder="e.g. 200"></div>
     </div>
     <div class="row">
-      <div><label class="lbl-pay">${seg}Avg payment days</label><input type="number" value="${b.avgPay}" data-f="avgPay"></div>
-      <div><label class="lbl-ret">${seg}Return rate (%)</label><input type="number" value="${b.retRate}" data-f="retRate" min="0" max="100" data-max100="true"></div>
-      <div><label class="lbl-disp">${seg}Dispute rate (%)</label><input type="number" value="${b.dispRate}" data-f="dispRate" min="0" max="100" data-max100="true"></div>
+      <div><label class="lbl-pay">${seg}Avg payment days</label><input type="number" value="${val(b.avgPay)}" data-f="avgPay" placeholder="e.g. 3"></div>
+      <div><label class="lbl-ret">${seg}Return rate (%)</label><input type="number" value="${val(b.retRate)}" data-f="retRate" min="0" max="100" data-max100="true" placeholder="e.g. 5"></div>
+      <div><label class="lbl-disp">${seg}Dispute rate (%)</label><input type="number" value="${val(b.dispRate)}" data-f="dispRate" min="0" max="100" data-max100="true" placeholder="e.g. 2"></div>
     </div>
     <div class="row">
-      <div><label class="lbl-orders">${seg}Completed orders (6mo)</label><input type="number" value="${b.orders}" data-f="orders"></div>
-      <div><label>Active orders</label><input type="number" value="${b.active}" data-f="active"></div>
+      <div><label class="lbl-orders">${seg}Completed orders (6mo)</label><input type="number" value="${val(b.orders)}" data-f="orders" placeholder="e.g. 50"></div>
+      <div><label>Active orders</label><input type="number" value="${val(b.active)}" data-f="active" placeholder="e.g. 5"></div>
     </div>
     <label class="chk" style="margin-top:6px"><input type="checkbox" ${b.isNew?'checked':''} data-f="isNew" onchange="toggleNewBuyer(this)"> New buyer (cold start eligible)</label>
   </div>`;
@@ -207,9 +208,33 @@ function updateRunBtnState(){
 }
 
 function addBuyer(defaults){
-  const b = defaults || {name:`Buyer ${String.fromCharCode(65+buyerCount)}`, bid:0, cats:["Phone"], mode:"delivery", rto:10, avgCol:0, avgPay:5, retRate:5, dispRate:5, orders:0, active:0, isNew:true};
+  const newBuyerId = buyerCount;
+  const b = defaults || {
+    name: `Buyer ${String.fromCharCode(65 + buyerCount)}`,
+    bid: '',
+    cats: ['Phone'],
+    mode: 'delivery',
+    rto: '',
+    avgCol: '',
+    delCost: '',
+    avgPay: '',
+    retRate: '',
+    dispRate: '',
+    orders: '',
+    active: '',
+    isNew: true
+  };
   document.getElementById('buyers').insertAdjacentHTML('beforeend', buyerCard(b));
   updateRunBtnState();
+
+  if (!defaults) {
+    const newCard = document.getElementById(`buyer-${newBuyerId}`);
+    if (newCard) {
+      newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      const firstInput = newCard.querySelector('input[data-f="bid"]');
+      if (firstInput) firstInput.focus();
+    }
+  }
 }
 
 function removeBuyer(id){
@@ -597,8 +622,58 @@ function renderResult(buyers, eligible, overrideBuyer, deviceType, valueTier, ov
     </table>`;
 }
 
+function showWelcomeModal() {
+  let overlay = document.getElementById('welcomeModal');
+  if(!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'welcomeModal';
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal-content welcome-modal-content">
+        <button class="modal-close-btn" onclick="dismissWelcomeModal()">&times;</button>
+        <div class="welcome-icon">⚡</div>
+        <div class="modal-title">Live Matching Engine Ready</div>
+        <div class="modal-body">
+          The matching results have been <strong>pre-calculated using default buyer bids and threshold values</strong>.
+          <br><br>
+          You can modify any parameters or buyer metrics on the left panel, then click <strong>"Run Matching Engine"</strong> to dynamically recalculate matches in real-time!
+        </div>
+        <div class="welcome-btn-row">
+          <button class="welcome-btn primary-btn" onclick="dismissWelcomeModal()">Explore Input Fields</button>
+          <button class="welcome-btn secondary-btn" onclick="dismissWelcomeModal(true)">View Pre-Calculated Match</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    overlay.onclick = (e) => {
+      if (e.target === overlay) {
+        dismissWelcomeModal();
+      }
+    };
+  }
+
+  requestAnimationFrame(() => {
+    overlay.classList.add('active');
+  });
+}
+
+function dismissWelcomeModal(scrollToResults = false) {
+  const overlay = document.getElementById('welcomeModal');
+  if(overlay) {
+    overlay.classList.remove('active');
+  }
+  if(scrollToResults) {
+    const chartCard = document.querySelector('.chart-card') || document.getElementById('result');
+    if(chartCard) {
+      chartCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   buyerDefaults.forEach(b=>addBuyer(b));
   updateRunBtnState();
   run();
+  showWelcomeModal();
 });
